@@ -68,7 +68,9 @@ export default async function handler(req, res) {
     address,
     location,         // GHL sometimes uses 'location' instead of 'address'
     startDate,
+    startTime,
     endDate,
+    endTime,
     description,
     contactEmail,
     eventType,        // optional — e.g. "Hike", "Workshop", "Webinar"
@@ -100,8 +102,8 @@ export default async function handler(req, res) {
     `  Event Name:    ${eventName}`,
     eventType    ? `  Event Type:    ${eventType}`    : null,
     eventAddress ? `  Address:       ${eventAddress}` : "  Address:       (NOT PROVIDED)",
-    startDate    ? `  Start Date:    ${startDate}`    : "  Start Date:    (NOT PROVIDED)",
-    endDate      ? `  End Date:      ${endDate}`      : null,
+    startDate    ? `  Start Date:    ${startDate}${startTime ? " at " + startTime : ""}` : "  Start Date:    (NOT PROVIDED)",
+    endDate      ? `  End Date:      ${endDate}${endTime ? " at " + endTime : ""}`     : null,
     contactEmail ? `  Contact Email: ${contactEmail}` : null,
     description  ? `  Description:   ${description}` : null,
     notes        ? `  Notes:         ${notes}`        : null,
