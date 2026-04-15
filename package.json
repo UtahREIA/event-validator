@@ -1,0 +1,12 @@
+{
+  "name": "event-validator",
+  "version": "1.0.0",
+  "description": "GHL → Claude AI event data validation — catches wrong addresses, bad dates, and missing fields before events go live",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.54.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
