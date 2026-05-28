@@ -1,3 +1,5 @@
+// Event phone gate - Supabase member routing endpoint
+
 const SUPABASE_URL = 'https://kttzxjddtkgsitzehiid.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0dHp4amRkdGtnc2l0emVoaWlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MzkwNzcsImV4cCI6MjA5MjAxNTA3N30.g7rb4l524oWdvpi6xJKtGvn0OfCDaj9b4oxSOIrZysA';
 
