@@ -3,11 +3,27 @@
 const SUPABASE_URL = 'https://kttzxjddtkgsitzehiid.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0dHp4amRkdGtnc2l0emVoaWlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MzkwNzcsImV4cCI6MjA5MjAxNTA3N30.g7rb4l524oWdvpi6xJKtGvn0OfCDaj9b4oxSOIrZysA';
 
+const ALLOWED_ORIGINS = [
+  'https://utahreia.org',
+  'https://www.utahreia.org'
+];
+
 function normalizePhone(raw) {
   return String(raw || '').replace(/[^\d]/g, '').slice(-10);
 }
 
 export default async function handler(req, res) {
+  const origin = req.headers.origin || '';
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { phone } = req.body || {};
