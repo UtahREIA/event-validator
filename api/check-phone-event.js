@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
   try {
     const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/event_routing_members?phone=eq.${encodeURIComponent(normalized)}&select=status,guest_pass_used,expiration_date&limit=1`,
+      `${SUPABASE_URL}/rest/v1/event_routing_members?phone=eq.${encodeURIComponent(normalized)}&select=status,guest_pass_used,is_community_member&limit=1`,
       {
         headers: {
           'apikey': SUPABASE_ANON_KEY,
@@ -37,12 +37,15 @@ export default async function handler(req, res) {
     const contact = rows[0];
     const status = (contact.status || '').toLowerCase();
     const guestPassUsed = contact.guest_pass_used === true;
-    const expiration = contact.expiration_date ? new Date(contact.expiration_date) : null;
-    const isExpired = expiration ? expiration < new Date() : false;
-    const isActive = status === 'active' && !isExpired;
+    const isCommunityMember = contact.is_community_member === true;
+    const isActive = status === 'active';
 
-    if (isActive) {
-      return res.status(200).json({ found: true, route: 'member' });
+    if (isActive && isCommunityMember) {
+      return res.status(200).json({ found: true, route: 'member-community' });
+    }
+
+    if (isActive && !isCommunityMember) {
+      return res.status(200).json({ found: true, route: 'member-non-community' });
     }
 
     if (!guestPassUsed) {
