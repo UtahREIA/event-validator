@@ -46,8 +46,9 @@ export default async function handler(req, res) {
 
     const rows = await response.json();
 
+    // Phone not found -- first time visitor, send to guest page
     if (!rows || rows.length === 0) {
-      return res.status(200).json({ found: false, route: 'non-member' });
+      return res.status(200).json({ found: false, route: 'guest' });
     }
 
     const contact = rows[0];
@@ -56,18 +57,22 @@ export default async function handler(req, res) {
     const isCommunityMember = contact.is_community_member === true;
     const isActive = status === 'active';
 
+    // Active community member
     if (isActive && isCommunityMember) {
       return res.status(200).json({ found: true, route: 'member-community' });
     }
 
+    // Active non-community member
     if (isActive && !isCommunityMember) {
       return res.status(200).json({ found: true, route: 'member-non-community' });
     }
 
+    // Not active -- guest pass not yet used
     if (!guestPassUsed) {
       return res.status(200).json({ found: true, route: 'guest' });
     }
 
+    // Not active -- guest pass already used
     return res.status(200).json({ found: true, route: 'non-member' });
 
   } catch (err) {
