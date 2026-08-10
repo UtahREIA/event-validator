@@ -99,61 +99,39 @@ async function getCustomValues() {
 }
 
 function parseDateTime(date2, times) {
-  // date2 format: "2026-07-14 11:30 AM"
-  // times format: "11:30 AM - 01:00 PM" (may have extra spaces)
   try {
     const parts = date2.trim().split(' ');
-    const baseDate = parts[0]; // "2026-07-14"
-    const startTimeParts = parts.slice(1).join(' ').trim(); // "11:30 AM"
-
+    const baseDate = parts[0];
+    const startTime = parts.slice(1).join(' ').trim();
     const timesNorm = times.replace(/\s+/g, ' ').trim();
     const timeParts = timesNorm.split(' - ');
-    const endTimeStr = timeParts[1]?.trim();
+    const endTime = timeParts[1]?.trim();
 
-    const pad = n => String(n).padStart(2, '0');
-
-    const toLocalISO = (date, timeStr) => {
-      // Parse time manually to avoid timezone conversion
-      const normalized = timeStr.trim().toUpperCase();
-      const match = normalized.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/);
-      if (!match) throw new Error(`Cannot parse time: ${timeStr}`);
-      let hours = parseInt(match[1], 10);
-      const minutes = parseInt(match[2], 10);
-      const meridiem = match[3];
-      if (meridiem === 'PM' && hours !== 12) hours += 12;
-      if (meridiem === 'AM' && hours === 12) hours = 0;
-      return `${date}T${pad(hours)}:${pad(minutes)}:00`;
+    const toISO = (date, timeStr) => {
+      const dt = new Date(`${date} ${timeStr}`);
+      if (isNaN(dt)) throw new Error('Invalid date');
+      return dt.toISOString().slice(0, 19);
     };
 
     return {
-      start: toLocalISO(baseDate, startTimeParts),
-      end: endTimeStr ? toLocalISO(baseDate, endTimeStr) : toLocalISO(baseDate, startTimeParts)
+      start: toISO(baseDate, startTime),
+      end: endTime ? toISO(baseDate, endTime) : toISO(baseDate, startTime)
     };
-  } catch (e) {
-    console.error('parseDateTime error:', e.message);
+  } catch {
     return { start: date2, end: date2 };
   }
 }
 
-// Format local ISO string to Google Calendar format (no timezone = local time)
-function toGoogleDate(isoStr) {
-  return isoStr.replace(/[-:]/g, '').replace('T', 'T').slice(0, 15);
-}
-
-// Format local ISO string to ICS format (no Z suffix = local/floating time)
-function toICSDate(isoStr) {
-  return isoStr.replace(/[-:]/g, '').slice(0, 15);
-}
-
 function buildLocation(locationName, locationAddress) {
+  // Always include both -- if address is a URL it shows as the join link
   if (!locationAddress) return locationName;
   if (!locationName) return locationAddress;
   return `${locationName} - ${locationAddress}`;
 }
 
-function buildDescription(desc, locationAddress) {
+function buildDescription(desc, locationName, locationAddress) {
   let full = desc || '';
-  // Append join link at bottom if address is a URL (virtual event)
+  // Append join link at bottom of description if address is a URL
   if (locationAddress && (locationAddress.startsWith('http://') || locationAddress.startsWith('https://'))) {
     full = full ? `${full}\n\nJoin link: ${locationAddress}` : `Join link: ${locationAddress}`;
   }
@@ -161,7 +139,16 @@ function buildDescription(desc, locationAddress) {
   return full;
 }
 
+function toGoogleDate(isoStr) {
+  return new Date(isoStr).toISOString().replace(/-|:|\.\d+/g, '').slice(0, 15) + 'Z';
+}
+
+function toICSDate(isoStr) {
+  return new Date(isoStr).toISOString().replace(/-|:|\.\d+/g, '').slice(0, 15) + 'Z';
+}
+
 function generateICS(event, mtg) {
+  // Escape special characters for ICS format
   const escapeICS = str => String(str || '').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
   return [
     'BEGIN:VCALENDAR',
@@ -210,7 +197,7 @@ export default async function handler(req, res) {
     const desc = cvMap[ids.desc] || '';
 
     const location = buildLocation(locationName, locationAddress);
-    const description = buildDescription(desc, locationAddress);
+    const description = buildDescription(desc, locationName, locationAddress);
 
     const { start, end } = parseDateTime(date2, times);
     const event = { title, start, end, location, description };
