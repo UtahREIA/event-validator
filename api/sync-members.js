@@ -118,7 +118,7 @@ export default async function handler(req, res) {
 
     // Upsert via Supabase REST API directly (no SDK needed)
     const upsertRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/event_routing_members`,
+      `${SUPABASE_URL}/rest/v1/event_routing_members?on_conflict=ghl_contact_id`,
       {
         method: 'POST',
         headers: {
