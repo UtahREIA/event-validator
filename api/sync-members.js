@@ -4,8 +4,6 @@
 // Runs on a Vercel cron schedule (see vercel.json) and can also
 // be triggered manually with GET /api/sync-members?secret=CRON_SECRET
 
-import { createClient } from '@supabase/supabase-js';
-
 const GHL_API_KEY     = process.env.GHL_API_KEY;
 const GHL_LOCATION_ID = process.env.GHL_LOCATION_ID;
 const SUPABASE_URL    = process.env.SUPABASE_URL;
@@ -91,7 +89,6 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
   const syncedAt = new Date().toISOString();
 
   let totalSynced = 0;
@@ -113,12 +110,24 @@ export default async function handler(req, res) {
 
     const rows = contacts.map(c => buildRow(c, syncedAt));
 
-    const { error } = await supabase
-      .from('event_routing_members')
-      .upsert(rows, { onConflict: 'ghl_contact_id' });
+    // Upsert via Supabase REST API directly (no SDK needed)
+    const upsertRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/event_routing_members`,
+      {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          Prefer: 'resolution=merge-duplicates,return=minimal',
+        },
+        body: JSON.stringify(rows),
+      }
+    );
 
-    if (error) {
-      errors.push(`Supabase upsert error: ${error.message}`);
+    if (!upsertRes.ok) {
+      const text = await upsertRes.text();
+      errors.push(`Supabase upsert error ${upsertRes.status}: ${text}`);
     } else {
       totalSynced += rows.length;
     }
