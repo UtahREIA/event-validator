@@ -49,20 +49,28 @@ function buildRow(contact, syncedAt) {
 // GHL contacts list accepts ?startAfterId= for cursor paging.
 // Returns up to 100 contacts per page.
 
-async function fetchPage(startAfterId = null) {
-  const params = new URLSearchParams({
-    locationId: GHL_LOCATION_ID,
-    limit: '100',
-  });
-  if (startAfterId) params.set('startAfterId', startAfterId);
-
+async function fetchPage(page = 1) {
   const res = await fetch(
-    `https://services.leadconnectorhq.com/contacts/?${params}`,
+    `https://services.leadconnectorhq.com/contacts/search`,
     {
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${GHL_API_KEY}`,
         Version: '2021-07-28',
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        locationId: GHL_LOCATION_ID,
+        filters: [
+          {
+            field: `customFields.${FIELD_STATUS}`,
+            operator: 'eq',
+            value: 'Active',
+          },
+        ],
+        page,
+        pageLimit: 100,
+      }),
     }
   );
 
@@ -91,13 +99,13 @@ export default async function handler(req, res) {
 
   let totalSynced = 0;
   const errors    = [];
-  let startAfterId = null;
-  let hasMore      = true;
+  let page    = 1;
+  let hasMore = true;
 
   while (hasMore) {
     let contacts;
     try {
-      const data = await fetchPage(startAfterId);
+      const data = await fetchPage(page);
       contacts = data.contacts || [];
     } catch (err) {
       errors.push(err.message);
@@ -106,20 +114,7 @@ export default async function handler(req, res) {
 
     if (!contacts.length) break;
 
-    // Only sync contacts with Active membership status
-    const active = contacts.filter(c => {
-      const fields = {};
-      (c.customFields || []).forEach(f => { fields[f.id] = f.value; });
-      return fields[FIELD_STATUS] === 'Active';
-    });
-
-    if (!active.length) {
-      if (contacts.length < 100) hasMore = false;
-      else startAfterId = contacts[contacts.length - 1].id;
-      continue;
-    }
-
-    const rows = active.map(c => buildRow(c, syncedAt));
+    const rows = contacts.map(c => buildRow(c, syncedAt));
 
     // Upsert via Supabase REST API directly (no SDK needed)
     const upsertRes = await fetch(
@@ -147,7 +142,7 @@ export default async function handler(req, res) {
     if (contacts.length < 100) {
       hasMore = false;
     } else {
-      startAfterId = contacts[contacts.length - 1].id;
+      page++;
     }
   }
 
