@@ -53,8 +53,6 @@ async function fetchPage(startAfterId = null) {
   const params = new URLSearchParams({
     locationId: GHL_LOCATION_ID,
     limit: '100',
-    query: '',                       // required by some GHL versions
-    [`customField.${FIELD_STATUS}`]: 'Active',
   });
   if (startAfterId) params.set('startAfterId', startAfterId);
 
@@ -108,7 +106,20 @@ export default async function handler(req, res) {
 
     if (!contacts.length) break;
 
-    const rows = contacts.map(c => buildRow(c, syncedAt));
+    // Only sync contacts with Active membership status
+    const active = contacts.filter(c => {
+      const fields = {};
+      (c.customFields || []).forEach(f => { fields[f.id] = f.value; });
+      return fields[FIELD_STATUS] === 'Active';
+    });
+
+    if (!active.length) {
+      if (contacts.length < 100) hasMore = false;
+      else startAfterId = contacts[contacts.length - 1].id;
+      continue;
+    }
+
+    const rows = active.map(c => buildRow(c, syncedAt));
 
     // Upsert via Supabase REST API directly (no SDK needed)
     const upsertRes = await fetch(
